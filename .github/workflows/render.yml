@@ -1,0 +1,47 @@
+name: Render Kindle dashboard
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"   # keep in sync with REFRESH_MINUTES
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Render
+        env:
+          # Only secrets here; everything else is read from dashboard.config.env.
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          GCAL_ICS_URLS: ${{ secrets.GCAL_ICS_URLS }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Unguessable file name so only your Kindle knows the URL.
+          OUTPUT_NAME: ${{ secrets.DASHBOARD_SLUG }}
+        run: npm run render
+      - name: Publish only the PNG
+        run: |
+          mkdir site
+          cp out/*.png site/
+          echo "ok" > site/index.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - uses: actions/deploy-pages@v4
