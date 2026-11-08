@@ -6,8 +6,11 @@ export async function getEvents(days = 7) {
   const now = new Date();
   const end = new Date(now.getTime() + days * 86400000);
   const out = [];
-  for (const url of config.icsUrls) {
-    const data = await ical.async.fromURL(url);
+  for (const [i, url] of config.icsUrls.entries()) {
+    let data;
+    // One broken link must not hide the other calendars. Log its position, never the URL.
+    try { data = await ical.async.fromURL(url); }
+    catch (e) { console.warn(`[calendar] link #${i + 1}/${config.icsUrls.length} failed: ${e.message}`); continue; }
     for (const ev of Object.values(data)) {
       if (ev.type !== "VEVENT") continue;
       const dur = (ev.end ? +ev.end : +ev.start) - +ev.start;
