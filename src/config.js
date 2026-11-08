@@ -5,9 +5,14 @@ for (const file of [".env", "dashboard.config.env"]) {
   if (!fs.existsSync(file)) continue;
   for (const line of fs.readFileSync(file, "utf8").split("\n")) {
     const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*(#.*)?$/);
-    if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
+    // TZ is a display setting here; never let it change the process clock (see below).
+    const key = m && (m[1] === "TZ" ? "DASHBOARD_TZ" : m[1]);
+    if (m && !process.env[key]) process.env[key] = m[2];
   }
 }
+// Calendar recurrence maths is only correct when the process runs in UTC
+// (node-ical/rrule shift repeated events otherwise). Display uses Intl with config.tz.
+process.env.TZ = "UTC";
 
 /** "Status!=Reviewed" or "Type=Guide|Article" → predicate over a row-reader. */
 function parseFilter(spec) {
@@ -44,7 +49,8 @@ export const config = {
   lat: Number(env("LAT", "21.0285")),
   lon: Number(env("LON", "105.8542")),
   place: env("PLACE_NAME", "Hà Nội"),
-  tz: env("TZ", "Asia/Ho_Chi_Minh"),
+  tz: env("DASHBOARD_TZ", "Asia/Ho_Chi_Minh"),
+  suggestExclude: env("SUGGEST_EXCLUDE") ? new RegExp(env("SUGGEST_EXCLUDE"), "i") : null,
   width: Number(env("WIDTH", "1072")),
   height: Number(env("HEIGHT", "1448")),
   refreshMinutes: Number(env("REFRESH_MINUTES", "30")),

@@ -29,13 +29,23 @@ export async function queryDb(dbId, body = {}) {
   return out;
 }
 
+/** Rich text → plain text, with @date mentions shown as dd/mm instead of raw ISO strings. */
+export function plain(rich = []) {
+  return rich.map((t) => {
+    const d = t.type === "mention" && t.mention?.type === "date" ? t.mention.date?.start : null;
+    if (!d) return t.plain_text;
+    const [y, m, day] = d.slice(0, 10).split("-");
+    return `${day}/${m}${y === localDate().slice(0, 4) ? "" : "/" + y}`;
+  }).join("");
+}
+
 /** Read any property as plain text / number / date string. */
 export function prop(page, name) {
   const p = page.properties?.[name];
   if (!p) return null;
   switch (p.type) {
-    case "title": return p.title.map((t) => t.plain_text).join("");
-    case "rich_text": return p.rich_text.map((t) => t.plain_text).join("");
+    case "title": return plain(p.title);
+    case "rich_text": return plain(p.rich_text);
     case "status": return p.status?.name ?? null;
     case "select": return p.select?.name ?? null;
     case "number": return p.number;
@@ -47,7 +57,7 @@ export function prop(page, name) {
 
 export function titleOf(page) {
   const t = Object.values(page.properties ?? {}).find((p) => p.type === "title");
-  return t ? t.title.map((x) => x.plain_text).join("") : "Untitled";
+  return t ? plain(t.title) : "Untitled";
 }
 
 // ---------- 1. Tasks ----------
@@ -106,7 +116,7 @@ async function pageText(pageId) {
     for (const b of r.results) {
       const rt = b[b.type]?.rich_text;
       if (!rt) continue;
-      const text = rt.map((t) => t.plain_text).join("").trim();
+      const text = plain(rt).trim();
       if (!text) continue;
       const kind = b.type.startsWith("heading") ? "h" : b.type === "quote" ? "q" : b.type.includes("list") ? "li" : "p";
       lines.push({ kind, text });
@@ -200,6 +210,8 @@ export async function getStaleItems() {
       if (Date.parse(p.last_edited_time) < cutoff) items.push({ id: p.id, kind: "task", title: prop(p, P.title) || titleOf(p), stage: status, lastEdited: p.last_edited_time });
     }
   }
+  // Routine items (e.g. weekly reviews) are not "plans that stalled".
+  if (config.suggestExclude) items.splice(0, items.length, ...items.filter((x) => !config.suggestExclude.test(x.title)));
   // Prefer things that slipped recently over ones that have been dead for months.
   const floor = Date.now() - config.staleMaxDays * 86400000;
   const recent = items.filter((x) => Date.parse(x.lastEdited) >= floor);

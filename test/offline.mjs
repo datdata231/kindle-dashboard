@@ -82,4 +82,19 @@ assert.equal(stale[0].title, "Xây Substack Stoicism", "projects first");
 assert.ok(stale.some((x) => x.title === "Học tiếng Trung bài 3"), "old overdue task becomes a suggestion");
 assert.ok(!stale.some((x) => x.title === "Dự án mới sửa" || x.title === "Dự án đã xong"));
 
+// @date mentions in titles render as dd/mm, not ISO strings.
+const mention = [{ plain_text: "Tổng kết tuần " }, { type: "mention", mention: { type: "date", date: { start: "2026-10-26T08:00:00.000+07:00" } }, plain_text: "2026-10-26T08:00:00.000+07:00" }];
+assert.equal(N.plain(mention), "Tổng kết tuần 26/10");
+
+// Recurring calendar events keep their wall-clock time (regression: shifted +7h when the process ran in local time).
+const ical = (await import("node-ical")).default;
+const ics = ["BEGIN:VCALENDAR", "BEGIN:VEVENT", "UID:x", "SUMMARY:Cooldown",
+  "DTSTART;TZID=Asia/Ho_Chi_Minh:20261001T210000", "DTEND;TZID=Asia/Ho_Chi_Minh:20261001T220000",
+  "RRULE:FREQ=DAILY", "END:VEVENT", "END:VCALENDAR"].join("\r\n");
+const ev = Object.values(ical.sync.parseICS(ics)).find((e) => e.type === "VEVENT");
+const occ = ev.rrule.between(new Date("2026-11-08T00:00:00Z"), new Date("2026-11-09T00:00:00Z"), true)[0];
+const { fmtTime } = await import("../src/config.js");
+assert.equal(process.env.TZ, "UTC");
+assert.equal(fmtTime(occ), "21:00", "recurring event keeps 21:00 local");
+
 console.log("offline checks passed");
