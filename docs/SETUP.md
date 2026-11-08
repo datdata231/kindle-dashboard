@@ -111,17 +111,18 @@ Cách jailbreak phụ thuộc firmware. Hãy làm theo hướng dẫn cập nh�
 - Cài thêm **KUAL** và **MRPI** theo hướng dẫn.
 - Jailbreak có rủi ro (mất bảo hành, có thể brick máy). Đọc kỹ trước khi làm.
 
-### 5.3 Hiển thị dashboard
-Khuyên dùng **kindle-dash** (github.com/pascalw/kindle-dash). Nó tự tải PNG theo lịch, hiển thị toàn màn hình, cho Kindle ngủ giữa các lần làm mới và cảnh báo khi pin yếu.
+### 5.3 Hiển thị dashboard (kindle-dash, đã vá cho Paperwhite)
+`scripts/build-kindle.sh` tải **kindle-dash v1.0.0-beta.4** (github.com/pascalw/kindle-dash), vá 2 chỗ để chạy trên Paperwhite 3/4 (dừng giao diện bằng `stop framework`/`stop lab126_gui`, hẹn giờ thức bằng `rtcwake -d /dev/rtc1` — theo issue #25 của dự án), và tạo:
 
-1. Tải bản release, giải nén vào thư mục `kindle-dash` ở gốc bộ nhớ Kindle (qua USB).
-2. Sửa `local/fetch-dashboard`:
-   ```sh
-   #!/usr/bin/env sh
-   curl -fsS "https://<username>.github.io/<repo>/<DASHBOARD_SLUG>.png" -o "$1"
-   ```
-3. Sửa `local/env.sh`: `REFRESH_SCHEDULE="*/30 6-23 * * *"` (30 phút/lần, từ 6h tới 23h) và `TIMEZONE="Asia/Ho_Chi_Minh"`.
-4. Mở KUAL → *Kindle Dashboard* → *Start*. Để thoát: bấm nút nguồn hoặc khởi động lại máy.
+- `kindle/dashboard/` — đã điền sẵn link ảnh của bạn, làm mới phút 8 và 38 mỗi giờ, 6h–23h
+- `kindle/extensions/kindle-dash/` — mục "Kindle Dashboard" trong menu KUAL
+
+Cài đặt (sau khi đã jailbreak + cài KUAL/MRPI):
+1. Cắm Kindle vào máy tính. Chép `kindle/dashboard` vào **gốc** bộ nhớ Kindle (thành `/dashboard`), và `kindle/extensions/kindle-dash` vào thư mục `extensions` có sẵn.
+2. Eject, rút cáp. Bật Wi-Fi (tắt Airplane Mode).
+3. Mở **KUAL** trong thư viện → *Kindle Dashboard*. Sau vài giây giao diện Kindle tắt, dashboard hiện lên; ~15 giây sau máy vào chế độ ngủ và tự thức dậy theo lịch.
+
+Thoát về Kindle bình thường: **giữ nút nguồn ~40 giây** để khởi động lại. Lưu ý (issue #18): khi đang ngủ, máy có thể không nhận sạc — muốn sạc thì khởi động lại trước. Nhật ký lỗi ở `/dashboard/logs/dash.log`.
 
 Cách khác: extension **Online Screensaver** cho KUAL. Nó đặt PNG làm màn hình chờ, nên Kindle vẫn dùng đọc sách bình thường; dashboard hiện ra mỗi khi tắt màn hình.
 
